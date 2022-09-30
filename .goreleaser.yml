@@ -18,3 +18,8 @@ snapshot:
 changelog:
   use: github
   sort: asc
+  filters:
+    exclude:
+      - '^Bump'
+release:
+  draft: true
