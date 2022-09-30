@@ -8,21 +8,31 @@ const DefaultVersion = "0.0"
 
 type TargetServiceType string
 
-const ECSTargetServiceType TargetServiceType = "AWS::ECS::Service"
+const (
+	ECSTargetServiceType    TargetServiceType = "AWS::ECS::Service"
+	LambdaTargetServiceType TargetServiceType = "AWS::Lambda::Function"
+)
 
 type LoadBalancerInfo struct {
 	ContainerName string `json:"ContainerName"`
 	ContainerPort int    `json:"ContainerPort"`
 }
 
-type Properties struct {
+type ECSProperties struct {
 	TaskDefinition   string           `json:"TaskDefinition"`
 	LoadBalancerInfo LoadBalancerInfo `json:"LoadBalancerInfo"`
 }
 
+type LambdaProperties struct {
+	Name           string `json:"Name"`
+	Alias          string `json:"Alias"`
+	CurrentVersion string `json:"CurrentVersion"`
+	TargetVersion  string `json:"TargetVersion"`
+}
+
 type TargetService struct {
 	Type       TargetServiceType `json:"Type"`
-	Properties Properties        `json:"Properties"`
+	Properties any               `json:"Properties"`
 }
 
 type Resource struct {
@@ -36,7 +46,7 @@ type AppSpec struct {
 	Resources []Resource `json:"Resources"`
 }
 
-// NewECS creates a new instance of AppSpec incorporating commonly used default values for ECS deployments.
+// NewECS creates a new instance of AppSpec incorporating commonly used default values for ECS service deployments.
 func NewECS(taskDefinitionARN, containerName string, containerPort int) *AppSpec {
 	return &AppSpec{
 		Version: DefaultVersion,
@@ -44,12 +54,32 @@ func NewECS(taskDefinitionARN, containerName string, containerPort int) *AppSpec
 			{
 				TargetService: TargetService{
 					Type: ECSTargetServiceType,
-					Properties: Properties{
+					Properties: ECSProperties{
 						TaskDefinition: taskDefinitionARN,
 						LoadBalancerInfo: LoadBalancerInfo{
 							ContainerName: containerName,
 							ContainerPort: containerPort,
 						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// NewLambda creates a new instance of AppSpec incorporating commonly used default values for Lambda function deployments.
+func NewLambda(functionName, functionAlias, currentVersion, targetVersion string) *AppSpec {
+	return &AppSpec{
+		Version: DefaultVersion,
+		Resources: []Resource{
+			{
+				TargetService: TargetService{
+					Type: LambdaTargetServiceType,
+					Properties: LambdaProperties{
+						Name:           functionName,
+						Alias:          functionAlias,
+						CurrentVersion: currentVersion,
+						TargetVersion:  targetVersion,
 					},
 				},
 			},
