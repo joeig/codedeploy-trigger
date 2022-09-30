@@ -18,5 +18,3 @@ snapshot:
 changelog:
   use: github
   sort: asc
-release:
-  draft: true
