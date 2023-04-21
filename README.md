@@ -1,5 +1,8 @@
 # CodeDeploy Trigger
 
+[![Tests](https://github.com/joeig/codedeploy-trigger/workflows/Tests/badge.svg)](https://github.com/joeig/codedeploy-trigger/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/joeig/codedeploy-trigger)](https://goreportcard.com/report/github.com/joeig/codedeploy-trigger)
+
 This handy tool creates a new CodeDeploy deployment for ECS services and Lambda functions and waits until it completes.
 In case the deployment fails, it tells you why.
 
