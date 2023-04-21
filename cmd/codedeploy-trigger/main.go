@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
 	"github.com/joeig/codedeploy-trigger/pkg/deploy"
@@ -12,32 +13,36 @@ import (
 )
 
 const (
-	ecsTarget    string = "ECS"
-	lambdaTarget string = "Lambda"
+	ECSTarget    string = "ECS"
+	LambdaTarget string = "Lambda"
 )
 
-func failIfWrongTarget(flagName, flagValue string) {
-	if flagValue != ecsTarget && flagValue != lambdaTarget {
-		log.Fatalf("attribute %q must be either %q or %q", flagName, ecsTarget, lambdaTarget)
+func failIfWrongTarget(flagName, flagValue string) error {
+	if flagValue != ECSTarget && flagValue != LambdaTarget {
+		return fmt.Errorf("attribute %q must be either %q or %q", flagName, ECSTarget, LambdaTarget)
 	}
+	return nil
 }
 
-func failIfEmptyFlag(flagName string, flagValue string) {
+func failIfEmptyFlag(flagName string, flagValue string) error {
 	if len(flagValue) == 0 {
-		log.Fatalf("attribute %q must not be empty", flagName)
+		return fmt.Errorf("attribute %q must not be empty", flagName)
 	}
+	return nil
 }
 
-func failIfOutOfPortRangeFlag(flagName string, flagValue int) {
+func failIfOutOfPortRangeFlag(flagName string, flagValue int) error {
 	if flagValue < 0 || flagValue > 65535 {
-		log.Fatalf("attribute %q contains an invalid port number", flagName)
+		return fmt.Errorf("attribute %q contains an invalid port number", flagName)
 	}
+	return nil
 }
 
-func failIfInsufficientDuration(flagName string, flagValue time.Duration) {
+func failIfInsufficientDuration(flagName string, flagValue time.Duration) error {
 	if flagValue <= 0 {
-		log.Fatalf("attribute %q must be greater than zero", flagName)
+		return fmt.Errorf("attribute %q must be greater than zero", flagName)
 	}
+	return nil
 }
 
 func main() {
@@ -57,22 +62,44 @@ func main() {
 
 	flag.Parse()
 
-	failIfWrongTarget("target", *target)
-	failIfInsufficientDuration("maxWaitDuration", *maxWaitDuration)
-	failIfEmptyFlag("applicationName", *applicationName)
-	failIfEmptyFlag("deploymentGroupName", *deploymentGroupName)
-
-	if *target == ecsTarget {
-		failIfEmptyFlag("taskDefinitionARN", *taskDefinitionARN)
-		failIfEmptyFlag("containerName", *containerName)
-		failIfOutOfPortRangeFlag("containerPort", *containerPort)
+	if err := failIfWrongTarget("target", *target); err != nil {
+		log.Fatalf(err.Error())
+	}
+	if err := failIfInsufficientDuration("maxWaitDuration", *maxWaitDuration); err != nil {
+		log.Fatalf(err.Error())
+	}
+	if err := failIfEmptyFlag("applicationName", *applicationName); err != nil {
+		log.Fatalf(err.Error())
+	}
+	if err := failIfEmptyFlag("deploymentGroupName", *deploymentGroupName); err != nil {
+		log.Fatalf(err.Error())
 	}
 
-	if *target == lambdaTarget {
-		failIfEmptyFlag("functionName", *functionName)
-		failIfEmptyFlag("functionAlias", *functionAlias)
-		failIfEmptyFlag("currentVersion", *currentVersion)
-		failIfEmptyFlag("targetVersion", *targetVersion)
+	if *target == ECSTarget {
+		if err := failIfEmptyFlag("taskDefinitionARN", *taskDefinitionARN); err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := failIfEmptyFlag("containerName", *containerName); err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := failIfOutOfPortRangeFlag("containerPort", *containerPort); err != nil {
+			log.Fatalf(err.Error())
+		}
+	}
+
+	if *target == LambdaTarget {
+		if err := failIfEmptyFlag("functionName", *functionName); err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := failIfEmptyFlag("functionAlias", *functionAlias); err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := failIfEmptyFlag("currentVersion", *currentVersion); err != nil {
+			log.Fatalf(err.Error())
+		}
+		if err := failIfEmptyFlag("targetVersion", *targetVersion); err != nil {
+			log.Fatalf(err.Error())
+		}
 	}
 
 	awsConfig, err := config.LoadDefaultConfig(context.Background())
@@ -88,11 +115,11 @@ func main() {
 
 	var appSpec *deploy.AppSpec
 
-	if *target == ecsTarget {
+	if *target == ECSTarget {
 		appSpec = deploy.NewECS(*taskDefinitionARN, *containerName, *containerPort)
 	}
 
-	if *target == lambdaTarget {
+	if *target == LambdaTarget {
 		appSpec = deploy.NewLambda(*functionName, *functionAlias, *currentVersion, *targetVersion)
 	}
 
