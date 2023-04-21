@@ -107,8 +107,10 @@ func main() {
 		log.Fatalf("cannot load AWS configuration: %s", err)
 	}
 
+	codeDeployClient := codedeploy.NewFromConfig(awsConfig)
 	codeDeployContext := &deploy.CodeDeployContext{
-		Client: codedeploy.NewFromConfig(awsConfig),
+		Client:                     codeDeployClient,
+		DeploymentSuccessfulWaiter: codedeploy.NewDeploymentSuccessfulWaiter(codeDeployClient),
 	}
 
 	log.Printf("creating deployment for application %q (group %q)", *applicationName, *deploymentGroupName)
