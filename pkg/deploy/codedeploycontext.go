@@ -27,8 +27,18 @@ func assembleCreateDeploymentInput(applicationName, deploymentGroupName string, 
 	}
 }
 
+type CodeDeployClient interface {
+	CreateDeployment(ctx context.Context, params *codedeploy.CreateDeploymentInput, optFns ...func(*codedeploy.Options)) (*codedeploy.CreateDeploymentOutput, error)
+	GetDeployment(ctx context.Context, params *codedeploy.GetDeploymentInput, optFns ...func(*codedeploy.Options)) (*codedeploy.GetDeploymentOutput, error)
+}
+
+type DeploymentSuccessfulWaiter interface {
+	Wait(ctx context.Context, params *codedeploy.GetDeploymentInput, maxWaitDur time.Duration, optFns ...func(*codedeploy.DeploymentSuccessfulWaiterOptions)) error
+}
+
 type CodeDeployContext struct {
-	Client *codedeploy.Client
+	Client                     CodeDeployClient
+	DeploymentSuccessfulWaiter DeploymentSuccessfulWaiter
 }
 
 func (c *CodeDeployContext) CreateDeployment(ctx context.Context, applicationName, deploymentGroupName string, appSpec json.Marshaler) (string, error) {
@@ -46,10 +56,9 @@ func (c *CodeDeployContext) CreateDeployment(ctx context.Context, applicationNam
 }
 
 func (c *CodeDeployContext) WaitForSuccessfulDeployment(ctx context.Context, deploymentID string, maxWaitDur time.Duration) error {
-	waiter := codedeploy.NewDeploymentSuccessfulWaiter(c.Client)
 	deployment := &codedeploy.GetDeploymentInput{DeploymentId: aws.String(deploymentID)}
 
-	if err := waiter.Wait(ctx, deployment, maxWaitDur); err != nil {
+	if err := c.DeploymentSuccessfulWaiter.Wait(ctx, deployment, maxWaitDur); err != nil {
 		if output, getDeploymentErr := c.Client.GetDeployment(ctx, deployment); output != nil && output.DeploymentInfo != nil && output.DeploymentInfo.ErrorInformation != nil && output.DeploymentInfo.ErrorInformation.Message != nil && getDeploymentErr != nil {
 			return fmt.Errorf("%s (%w)", *output.DeploymentInfo.ErrorInformation.Message, err)
 		}
