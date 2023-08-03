@@ -51,9 +51,8 @@ func (m *mockCodeDeployClient) GetDeployment(_ context.Context, _ *codedeploy.Ge
 
 func TestCodeDeployContext_CreateDeployment(t *testing.T) {
 	deploymentID := "mock"
-	codeDeployContext := CodeDeployContext{Client: &mockCodeDeployClient{CreateDeploymentOutput: &codedeploy.CreateDeploymentOutput{DeploymentId: aws.String(deploymentID)}}}
-
-	output, err := codeDeployContext.CreateDeployment(context.Background(), "a", "d", &AppSpec{})
+	codeDeployContext, _ := NewCodeDeployContext(&mockCodeDeployClient{CreateDeploymentOutput: &codedeploy.CreateDeploymentOutput{DeploymentId: aws.String(deploymentID)}}, nil, nil).WithAppSpec(&AppSpec{})
+	output, err := codeDeployContext.CreateDeployment(context.Background(), "a", "d")
 
 	if output != deploymentID {
 		t.Error("wrong deployment ID")
@@ -65,9 +64,8 @@ func TestCodeDeployContext_CreateDeployment(t *testing.T) {
 }
 
 func TestCodeDeployContext_CreateDeployment_error(t *testing.T) {
-	codeDeployContext := CodeDeployContext{Client: &mockCodeDeployClient{CreateDeploymentErr: errors.New("mock")}}
-
-	output, err := codeDeployContext.CreateDeployment(context.Background(), "a", "d", &AppSpec{})
+	codeDeployContext, _ := NewCodeDeployContext(&mockCodeDeployClient{CreateDeploymentErr: errors.New("mock")}, nil, nil).WithAppSpec(&AppSpec{})
+	output, err := codeDeployContext.CreateDeployment(context.Background(), "a", "d")
 
 	if output != "" {
 		t.Error("unexpected deployment ID")
@@ -78,16 +76,14 @@ func TestCodeDeployContext_CreateDeployment_error(t *testing.T) {
 	}
 }
 
-type mockDeploymentSuccessfulWaiter struct {
-	WaitErr error
-}
-
-func (m *mockDeploymentSuccessfulWaiter) Wait(_ context.Context, _ *codedeploy.GetDeploymentInput, _ time.Duration, _ ...func(*codedeploy.DeploymentSuccessfulWaiterOptions)) error {
-	return m.WaitErr
+func NewMockDeploymentSuccessfulWaiter(waitErr error) DeploymentSuccessfulWaiter {
+	return func(ctx context.Context, params *codedeploy.GetDeploymentInput, maxWaitDur time.Duration, optFns ...func(*codedeploy.DeploymentSuccessfulWaiterOptions)) error {
+		return waitErr
+	}
 }
 
 func TestCodeDeployContext_WaitForSuccessfulDeployment(t *testing.T) {
-	codeDeployContext := CodeDeployContext{DeploymentSuccessfulWaiter: &mockDeploymentSuccessfulWaiter{}}
+	codeDeployContext := CodeDeployContext{DeploymentSuccessfulWaiter: NewMockDeploymentSuccessfulWaiter(nil)}
 
 	if err := codeDeployContext.WaitForSuccessfulDeployment(context.Background(), "mock", 1); err != nil {
 		t.Error("unexpected err")
@@ -95,7 +91,7 @@ func TestCodeDeployContext_WaitForSuccessfulDeployment(t *testing.T) {
 }
 
 func TestCodeDeployContext_WaitForSuccessfulDeployment_error(t *testing.T) {
-	codeDeployContext := CodeDeployContext{Client: &mockCodeDeployClient{}, DeploymentSuccessfulWaiter: &mockDeploymentSuccessfulWaiter{WaitErr: errors.New("mock")}}
+	codeDeployContext := CodeDeployContext{Client: &mockCodeDeployClient{}, DeploymentSuccessfulWaiter: NewMockDeploymentSuccessfulWaiter(errors.New("mock"))}
 
 	if err := codeDeployContext.WaitForSuccessfulDeployment(context.Background(), "mock", 1); err == nil {
 		t.Error("no err")
@@ -113,11 +109,51 @@ func TestCodeDeployContext_WaitForSuccessfulDeployment_error_details(t *testing.
 				},
 			},
 		},
-		DeploymentSuccessfulWaiter: &mockDeploymentSuccessfulWaiter{WaitErr: errors.New("mock")},
+		DeploymentSuccessfulWaiter: NewMockDeploymentSuccessfulWaiter(errors.New("mock")),
 	}
 
 	err := codeDeployContext.WaitForSuccessfulDeployment(context.Background(), "mock", 1)
 	if err.Error() != "mock" {
 		t.Error("unexpected err")
+	}
+}
+
+func TestCodeDeployContext_WithAppSpec(t *testing.T) {
+	codeDeployContext := CodeDeployContext{}
+	appSpec := &AppSpec{}
+
+	if _, err := codeDeployContext.WithAppSpec(appSpec); err != nil {
+		t.Error("unexpected err")
+	}
+
+	if !bytes.Equal(codeDeployContext.appSpecJson, []byte("{\"version\":\"\",\"Resources\":null}")) {
+		t.Error("invalid app spec JSON")
+	}
+}
+
+func NewMockFileReader(want []byte, wantErr error) FileReader {
+	return func(fileName string) ([]byte, error) {
+		return want, wantErr
+	}
+}
+
+func TestCodeDeployContext_WithAppSpecFile(t *testing.T) {
+	want := []byte("foo")
+	codeDeployContext := CodeDeployContext{FileReader: NewMockFileReader(want, nil)}
+
+	if _, err := codeDeployContext.WithAppSpecFile("foo"); err != nil {
+		t.Error("unexpected err")
+	}
+
+	if !bytes.Equal(codeDeployContext.appSpecJson, []byte("foo")) {
+		t.Error("invalid app spec JSON")
+	}
+}
+
+func TestCodeDeployContext_WithAppSpecFile_Error(t *testing.T) {
+	codeDeployContext := CodeDeployContext{FileReader: NewMockFileReader([]byte(""), errors.New("mock"))}
+
+	if _, err := codeDeployContext.WithAppSpecFile("foo"); err == nil {
+		t.Error("no err")
 	}
 }

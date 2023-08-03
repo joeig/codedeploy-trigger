@@ -13,28 +13,30 @@ It's usually used in conjunction with CI/CD or as a Terraform provisioner.
 ```shell
 $ codedeploy-trigger -help
 Usage of codedeploy-trigger:
+  -appSpecFileName string
+        Custom AppSpec file name
   -applicationName string
         CodeDeploy application name
   -containerName string
-        ECS container name
+        ECS container name (if appSpecFileName is unset)
   -containerPort int
-        ECS container port
+        ECS container port (if appSpecFileName is unset)
   -currentVersion string
-        Current Lambda function version
+        Current Lambda function version (if appSpecFileName is unset)
   -deploymentGroupName string
         CodeDeploy deployment group name
   -functionAlias string
-        Lambda function alias
+        Lambda function alias (if appSpecFileName is unset)
   -functionName string
-        Lambda function name
+        Lambda function name (if appSpecFileName is unset)
   -maxWaitDuration duration
         Max wait duration for a deployment to finish (default 30m0s)
   -target string
-        Deployment target ("ECS" or "Lambda")
+        Deployment target ("ECS" or "Lambda"; if appSpecFileName is unset)
   -targetVersion string
-        Target Lambda function version
+        Target Lambda function version (if appSpecFileName is unset)
   -taskDefinitionARN string
-        ECS task definition ARN
+        ECS task definition ARN (if appSpecFileName is unset)
 ```
 
 ## Install from source
