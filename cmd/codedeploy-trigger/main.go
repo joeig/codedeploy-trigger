@@ -94,11 +94,7 @@ func (f *FlagContext) validate() error {
 		return err
 	}
 
-	if f.appSpecFileName != nil {
-		if err := checkNotEmpty("appSpecFileName", *f.appSpecFileName); err != nil {
-			return err
-		}
-	} else {
+	if *f.appSpecFileName == "" {
 		if err := checkTarget("target", *f.target); err != nil {
 			return err
 		}
@@ -154,7 +150,7 @@ func main() {
 
 	log.Printf("creating deployment for application %q (group %q)", *flagContext.applicationName, *flagContext.deploymentGroupName)
 
-	if flagContext.appSpecFileName != nil {
+	if *flagContext.appSpecFileName == "" {
 		var appSpec *deploy.AppSpec
 
 		if *flagContext.target == ECSTarget {
