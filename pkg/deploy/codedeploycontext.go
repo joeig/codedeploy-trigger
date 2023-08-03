@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/codedeploy"
@@ -32,22 +33,50 @@ type CodeDeployClient interface {
 	GetDeployment(ctx context.Context, params *codedeploy.GetDeploymentInput, optFns ...func(*codedeploy.Options)) (*codedeploy.GetDeploymentOutput, error)
 }
 
-type DeploymentSuccessfulWaiter interface {
-	Wait(ctx context.Context, params *codedeploy.GetDeploymentInput, maxWaitDur time.Duration, optFns ...func(*codedeploy.DeploymentSuccessfulWaiterOptions)) error
-}
+type DeploymentSuccessfulWaiter func(ctx context.Context, params *codedeploy.GetDeploymentInput, maxWaitDur time.Duration, optFns ...func(*codedeploy.DeploymentSuccessfulWaiterOptions)) error
+
+type FileReader func(fileName string) ([]byte, error)
 
 type CodeDeployContext struct {
 	Client                     CodeDeployClient
 	DeploymentSuccessfulWaiter DeploymentSuccessfulWaiter
+	FileReader                 FileReader
+
+	appSpecJson []byte
 }
 
-func (c *CodeDeployContext) CreateDeployment(ctx context.Context, applicationName, deploymentGroupName string, appSpec json.Marshaler) (string, error) {
+func NewCodeDeployContext(client CodeDeployClient, deploymentSuccessfulWaiter DeploymentSuccessfulWaiter, fileReader FileReader) *CodeDeployContext {
+	return &CodeDeployContext{Client: client, DeploymentSuccessfulWaiter: deploymentSuccessfulWaiter, FileReader: fileReader}
+}
+
+func (c *CodeDeployContext) WithAppSpec(appSpec json.Marshaler) (*CodeDeployContext, error) {
 	appSpecJson, err := appSpec.MarshalJSON()
 	if err != nil {
-		return "", fmt.Errorf("cannot marshal JSON: %w", err)
+		return nil, fmt.Errorf("cannot marshal JSON: %w", err)
 	}
 
-	deployment, err := c.Client.CreateDeployment(ctx, assembleCreateDeploymentInput(applicationName, deploymentGroupName, appSpecJson))
+	c.appSpecJson = appSpecJson
+
+	return c, nil
+}
+
+func (c *CodeDeployContext) WithAppSpecFile(fileName string) (*CodeDeployContext, error) {
+	appSpecJson, err := c.FileReader(fileName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read file: %w", err)
+	}
+
+	c.appSpecJson = appSpecJson
+
+	return c, nil
+}
+
+func (c *CodeDeployContext) CreateDeployment(ctx context.Context, applicationName, deploymentGroupName string) (string, error) {
+	if c.appSpecJson == nil {
+		return "", errors.New("cannot create deployment: app spec is empty")
+	}
+
+	deployment, err := c.Client.CreateDeployment(ctx, assembleCreateDeploymentInput(applicationName, deploymentGroupName, c.appSpecJson))
 	if err != nil {
 		return "", fmt.Errorf("cannot create deployment: %w", err)
 	}
@@ -58,7 +87,7 @@ func (c *CodeDeployContext) CreateDeployment(ctx context.Context, applicationNam
 func (c *CodeDeployContext) WaitForSuccessfulDeployment(ctx context.Context, deploymentID string, maxWaitDur time.Duration) error {
 	deployment := &codedeploy.GetDeploymentInput{DeploymentId: aws.String(deploymentID)}
 
-	if err := c.DeploymentSuccessfulWaiter.Wait(ctx, deployment, maxWaitDur); err != nil {
+	if err := c.DeploymentSuccessfulWaiter(ctx, deployment, maxWaitDur); err != nil {
 		if output, getDeploymentErr := c.Client.GetDeployment(ctx, deployment); output != nil && output.DeploymentInfo != nil && output.DeploymentInfo.ErrorInformation != nil && output.DeploymentInfo.ErrorInformation.Message != nil && getDeploymentErr != nil {
 			return fmt.Errorf("%s (%w)", *output.DeploymentInfo.ErrorInformation.Message, err)
 		}

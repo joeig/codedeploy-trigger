@@ -1,11 +1,12 @@
 package main
 
 import (
+	"flag"
 	"testing"
 	"time"
 )
 
-func Test_failIfWrongTarget(t *testing.T) {
+func Test_checkTarget(t *testing.T) {
 	type args struct {
 		flagName  string
 		flagValue string
@@ -42,14 +43,14 @@ func Test_failIfWrongTarget(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := failIfWrongTarget(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
-				t.Errorf("failIfWrongTarget() error = %v, wantErr %v", err, tt.wantErr)
+			if err := checkTarget(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
+				t.Errorf("checkTarget() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_failIfEmptyFlag(t *testing.T) {
+func Test_checkNotEmpty(t *testing.T) {
 	type args struct {
 		flagName  string
 		flagValue string
@@ -78,14 +79,14 @@ func Test_failIfEmptyFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := failIfEmptyFlag(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
-				t.Errorf("failIfEmptyFlag() error = %v, wantErr %v", err, tt.wantErr)
+			if err := checkNotEmpty(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
+				t.Errorf("checkNotEmpty() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_failIfOutOfPortRangeFlag(t *testing.T) {
+func Test_checkPortRange(t *testing.T) {
 	type args struct {
 		flagName  string
 		flagValue int
@@ -130,14 +131,14 @@ func Test_failIfOutOfPortRangeFlag(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := failIfOutOfPortRangeFlag(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
-				t.Errorf("failIfOutOfPortRangeFlag() error = %v, wantErr %v", err, tt.wantErr)
+			if err := checkPortRange(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
+				t.Errorf("checkPortRange() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_failIfInsufficientDuration(t *testing.T) {
+func Test_checkDuration(t *testing.T) {
 	type args struct {
 		flagName  string
 		flagValue time.Duration
@@ -166,9 +167,90 @@ func Test_failIfInsufficientDuration(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := failIfInsufficientDuration(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
-				t.Errorf("failIfInsufficientDuration() error = %v, wantErr %v", err, tt.wantErr)
+			if err := checkDuration(tt.args.flagName, tt.args.flagValue); (err != nil) != tt.wantErr {
+				t.Errorf("checkDuration() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestFlagContext_Parse(t *testing.T) {
+	flagContext := &FlagContext{FlagSet: flag.CommandLine}
+	arguments := []string{
+		"-maxWaitDuration",
+		"15m",
+		"-applicationName",
+		"my-app",
+		"-deploymentGroupName",
+		"my-group",
+		"-target",
+		"Lambda",
+		"-appSpecFileName",
+		"my-file",
+		"-taskDefinitionARN",
+		"my-task-def",
+		"-containerName",
+		"my-container",
+		"-containerPort",
+		"1337",
+		"-functionName",
+		"my-function",
+		"-functionAlias",
+		"my-alias",
+		"-currentVersion",
+		"my-current-version",
+		"-targetVersion",
+		"my-target-version",
+	}
+
+	if err := flagContext.Parse(arguments); err != nil {
+		t.Error("unexpected error")
+	}
+
+	if flagContext.maxWaitDuration.String() != "15m0s" {
+		t.Error("unexpected max wait duration")
+	}
+
+	if *flagContext.applicationName != "my-app" {
+		t.Error("unexpected application name")
+	}
+
+	if *flagContext.deploymentGroupName != "my-group" {
+		t.Error("unexpected deployment group name")
+	}
+
+	if *flagContext.target != "Lambda" {
+		t.Error("unexpected target")
+	}
+
+	if *flagContext.appSpecFileName != "my-file" {
+		t.Error("unexpected app spec file name")
+	}
+
+	if *flagContext.taskDefinitionARN != "my-task-def" {
+		t.Error("unexpected task definition ARN")
+	}
+
+	if *flagContext.containerName != "my-container" {
+		t.Error("unexpected container name")
+	}
+
+	if *flagContext.containerPort != 1337 {
+		t.Error("unexpected container Port")
+	}
+
+	if *flagContext.functionName != "my-function" {
+		t.Error("unexpected function name")
+	}
+
+	if *flagContext.functionAlias != "my-alias" {
+		t.Error("unexpected function alias")
+	}
+
+	if *flagContext.currentVersion != "my-current-version" {
+		t.Error("unexpected current version")
+	}
+	if *flagContext.targetVersion != "my-target-version" {
+		t.Error("unexpected target version")
 	}
 }
