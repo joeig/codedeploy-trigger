@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go 1.21
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.21.4"
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
       - name: golangci-lint
@@ -33,13 +33,21 @@ jobs:
       - name: Set up Go 1.21
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.21.4"
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
       - name: Run tests
         run: make test
       - name: Show test coverage
         run: make coverage
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: "1.21.4"
+          go-package: ./...
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -47,7 +55,7 @@ jobs:
       - name: Set up Go 1.21
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.21.4"
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
       - name: Build
