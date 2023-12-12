@@ -46,6 +46,7 @@ jobs:
       - uses: golang/govulncheck-action@v1
         with:
           go-version-input: "1.21"
+          check-latest: true
           go-package: ./...
   build:
     name: Build
