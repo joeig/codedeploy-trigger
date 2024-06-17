@@ -3,7 +3,7 @@ module github.com/joeig/codedeploy-trigger
 go 1.22
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.27.2
+	github.com/aws/aws-sdk-go-v2 v1.28.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.18
 	github.com/aws/aws-sdk-go-v2/service/codedeploy v1.25.10
 )
