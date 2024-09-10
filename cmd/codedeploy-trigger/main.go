@@ -162,11 +162,11 @@ func main() {
 		}
 
 		if _, err := codeDeployContext.WithAppSpec(appSpec); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 	} else {
 		if _, err := codeDeployContext.WithAppSpecFile(*flagContext.appSpecFileName); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err.Error())
 		}
 	}
 
