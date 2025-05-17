@@ -16,10 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: joeig/go-licenses-action@v1
         with:
-          go-version-file: "go.mod"
-          check-latest: true
-      - run: go install github.com/google/go-licenses@v1.6.0
-      - run: go-licenses report --include_tests ./...
-      - run: go-licenses check --include_tests --disallowed_types=restricted,forbidden,unknown ./...
+          disallowed-types: restricted,forbidden,unknown
